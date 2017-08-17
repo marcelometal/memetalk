@@ -1,7 +1,7 @@
 #ifndef CONTROL_HPP
 #define CONTROL_HPP
 
-class QEventLoop;
+#include <ev.h>
 
 class ProcessControl {
 public:
@@ -10,7 +10,7 @@ public:
   void resume();
 private:
   bool _running;
-  QEventLoop* _ev;
+  struct ev_loop *_ev;
 };
 
 #endif

@@ -1,27 +1,20 @@
-#include <QEventLoop>
 #include "ctrl.hpp"
 
 ProcessControl::ProcessControl() {
   _running = true;
-  _ev = NULL;
+  _ev = EV_DEFAULT;
 }
 
 void ProcessControl::pause() {
   if (_running) {
-    if (!_ev) {
-      _ev = new QEventLoop;
-    }
     _running = false;
-    _ev->exec();
+    ev_run (_ev, 0);
   }
 }
 
 void ProcessControl::resume() {
   if (!_running) {
-    if (!_ev) {
-      _ev = new QEventLoop;
-    }
     _running = true;
-    _ev->exit();
+    ev_break (_ev, EVBREAK_ALL);
   }
 }
