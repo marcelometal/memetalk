@@ -96,6 +96,18 @@ static int prim_net_getaddrinfo(Process* proc) {
   return 0;
 }
 
+/* -- socket -- */
+
+static int prim_net_socket(Process* proc) {
+  int domain = untag_small_int(proc->get_arg(0));
+  int type = untag_small_int(proc->get_arg(1));
+  int protocol = untag_small_int(proc->get_arg(2));
+  int sockfd = socket(domain, type, protocol);
+  proc->stack_push(tag_small_int(sockfd));
+  return 0;
+}
+
 void net_init_primitives(VM *vm) {
   vm->register_primitive("net_getaddrinfo", prim_net_getaddrinfo);
+  vm->register_primitive("net_socket", prim_net_socket);
 }
