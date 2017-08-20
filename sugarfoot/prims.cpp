@@ -5,6 +5,7 @@
 #include "utils.hpp"
 #include "mmobj.hpp"
 #include "mmc_image.hpp"
+#include "net_prims.hpp"
 #include "qt_prims.hpp"
 #include <string>
 #include <iostream>
@@ -2963,4 +2964,5 @@ void init_primitives(VM* vm) {
   vm->register_primitive("basename", prim_basename);
 
   qt_init_primitives(vm);
+  net_init_primitives(vm);
 }
