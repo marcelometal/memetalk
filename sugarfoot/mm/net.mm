@@ -30,6 +30,10 @@ recv: fun(sockfd, len, flags) {
   <primitive "net_recv">
 }
 
+send: fun(sockfd, buf, flags) {
+  <primitive "net_send">
+}
+
 close: fun(sockfd) {
   <primitive "net_close">
 }
@@ -60,9 +64,11 @@ loop: fun(client) {
 
   if (clientfd > 0) {
     io.print("Received info from client...");
-    var received = recv(clientfd, 1000, 0);
+    var raw_received = recv(clientfd, 1024, 0);
+    var received = raw_received.trim();
     io.print(received);
-    if (received.trim() != "exit") {
+    if (received != "exit") {
+      send(client[0], raw_received, 0);
       loop(client);
     }
   }

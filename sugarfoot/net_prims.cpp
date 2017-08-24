@@ -136,6 +136,21 @@ static int prim_net_recv(Process* proc) {
   return 0;
 }
 
+/* -- send -- */
+
+static int prim_net_send(Process* proc) {
+  int sockfd = untag_small_int(proc->get_arg(0));
+  oop buf_oop = proc->get_arg(1);
+  int flags = untag_small_int(proc->get_arg(2));
+
+  size_t len = proc->mmobj()->mm_string_size(proc, buf_oop);
+  const char *buf = proc->mmobj()->mm_string_cstr(proc, buf_oop);
+  ssize_t result = send(sockfd, (const void *) buf, len, flags);
+  proc->stack_push(tag_small_int(result));
+
+  return 0;
+}
+
 /* -- close -- */
 
 static int prim_net_close(Process* proc) {
@@ -174,6 +189,7 @@ void net_init_primitives(VM *vm) {
   vm->register_primitive("net_listen", prim_net_listen);
   vm->register_primitive("net_accept", prim_net_accept);
   vm->register_primitive("net_recv", prim_net_recv);
+  vm->register_primitive("net_send", prim_net_send);
   vm->register_primitive("net_close", prim_net_close);
   vm->register_primitive("net_addrinfo_ai_family", prim_net_addrinfo_ai_family);
   vm->register_primitive("net_addrinfo_ai_socktype", prim_net_addrinfo_ai_socktype);
