@@ -43,18 +43,10 @@ class SockAddr
 end
 
 class AddrInfo
-  fields: self;
+  fields: self, addrdict;
 
-  instance_method ai_family: fun() {
-    <primitive "net_addrinfo_ai_family">
-  }
-
-  instance_method ai_socktype: fun() {
-    <primitive "net_addrinfo_ai_socktype">
-  }
-
-  instance_method ai_protocol: fun() {
-    <primitive "net_addrinfo_ai_protocol">
+  instance_method index: fun(key) {
+    return @addrdict[key];
   }
 end
 
@@ -66,18 +58,21 @@ loop: fun(client) {
     io.print("Received info from client...");
     var raw_received = recv(clientfd, 1024, 0);
     var received = raw_received.trim();
-    io.print(received);
-    if (received != "exit") {
-      send(client[0], raw_received, 0);
-      loop(client);
+
+    if (received == "exit" or raw_received == "") {
+      return false;
     }
+    if (send(client[0], raw_received, 0) != raw_received.size()) {
+      return false;
+    }
+    return true;
   }
 }
 
 main: fun() {
   io.print("Echo Server");
-  getaddrinfo("0.0.0.0", "8000", { :family: AF_INET }).each(fun(_, addr) {
-    var sockfd = socket(addr.ai_family, addr.ai_socktype, addr.ai_protocol);
+  getaddrinfo("0.0.0.0", "8000", { :ai_family: AF_INET }).each(fun(_, addr) {
+    var sockfd = socket(addr[:ai_family], addr[:ai_socktype], addr[:ai_protocol]);
     if (sockfd != -1) {
       io.print("bind");
       if (bind(sockfd, addr) != 0) {
@@ -97,7 +92,11 @@ main: fun() {
         Exception.throw("accept");
       }
 
-      loop(client);
+      while (true) {
+        if (!loop(client)) {
+          ^ 0;
+        }
+      }
 
       io.print("close0: " + client[0].toString);
       close(client[0]);

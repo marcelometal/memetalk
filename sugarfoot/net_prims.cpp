@@ -24,8 +24,22 @@ static oop create_addrinfo(Process* proc, struct addrinfo* addrinfo) {
   if (exc != 0) {
     return mmclass;
   }
+  oop addrdict = proc->mmobj()->mm_dictionary_new();
   oop instance = proc->mmobj()->alloc_instance(proc, mmclass);
+
   ((struct addrinfo**) instance)[2] = addrinfo;
+  ((oop*) instance)[3] = addrdict;
+
+#define addrdict_set(k, v) proc->mmobj()->                              \
+    mm_dictionary_set(proc, addrdict, proc->vm()->new_symbol(k),        \
+                      tag_small_int(v));
+
+  addrdict_set("ai_flags", addrinfo->ai_flags);
+  addrdict_set("ai_family", addrinfo->ai_family);
+  addrdict_set("ai_socktype", addrinfo->ai_socktype);
+  addrdict_set("ai_protocol", addrinfo->ai_protocol);
+#undef addrdict_set
+
   return instance;
 }
 
@@ -41,10 +55,10 @@ static int prim_net_getaddrinfo(Process* proc) {
 
   struct addrinfo hints;
   memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_flags = lookup_symbol_in_dict(proc, "flags", hints_oop);
-  hints.ai_family = lookup_symbol_in_dict(proc, "family", hints_oop);
-  hints.ai_socktype = lookup_symbol_in_dict(proc, "socktype", hints_oop);
-  hints.ai_protocol = lookup_symbol_in_dict(proc, "protocol", hints_oop);
+  hints.ai_flags = lookup_symbol_in_dict(proc, "ai_flags", hints_oop);
+  hints.ai_family = lookup_symbol_in_dict(proc, "ai_family", hints_oop);
+  hints.ai_socktype = lookup_symbol_in_dict(proc, "ai_socktype", hints_oop);
+  hints.ai_protocol = lookup_symbol_in_dict(proc, "ai_protocol", hints_oop);
 
   int s;
   oop output = proc->mmobj()->mm_list_new();
@@ -131,6 +145,14 @@ static int prim_net_recv(Process* proc) {
   int flags = untag_small_int(proc->get_arg(2));
   char buf[len];
   ssize_t result = recv(sockfd, &buf, len, flags);
+
+  std::cout << "Result: " << result << "\n";
+  if (result == -1) {
+    oop ex = proc->mm_exception("ReadError", "recv failed");
+    proc->stack_push(ex);
+    return PRIM_RAISED;
+  }
+
   buf[result] = '\0';
   proc->stack_push(proc->mmobj()->mm_string_new(buf));
   return 0;
@@ -159,29 +181,6 @@ static int prim_net_close(Process* proc) {
   return 0;
 }
 
-/* -- addrinfo -- */
-
-static int prim_net_addrinfo_ai_family(Process* proc) {
-  oop addrinfo_oop = proc->rp();
-  struct addrinfo* addrinfo = (struct addrinfo *) ((oop *) addrinfo_oop)[2];
-  proc->stack_push(tag_small_int(addrinfo->ai_family));
-  return 0;
-}
-
-static int prim_net_addrinfo_ai_socktype(Process* proc) {
-  oop addrinfo_oop = proc->rp();
-  struct addrinfo* addrinfo = (struct addrinfo *) ((oop *) addrinfo_oop)[2];
-  proc->stack_push(tag_small_int(addrinfo->ai_socktype));
-  return 0;
-}
-
-static int prim_net_addrinfo_ai_protocol(Process* proc) {
-  oop addrinfo_oop = proc->rp();
-  struct addrinfo* addrinfo = (struct addrinfo *) ((oop *) addrinfo_oop)[2];
-  proc->stack_push(tag_small_int(addrinfo->ai_protocol));
-  return 0;
-}
-
 void net_init_primitives(VM *vm) {
   vm->register_primitive("net_getaddrinfo", prim_net_getaddrinfo);
   vm->register_primitive("net_socket", prim_net_socket);
@@ -191,7 +190,4 @@ void net_init_primitives(VM *vm) {
   vm->register_primitive("net_recv", prim_net_recv);
   vm->register_primitive("net_send", prim_net_send);
   vm->register_primitive("net_close", prim_net_close);
-  vm->register_primitive("net_addrinfo_ai_family", prim_net_addrinfo_ai_family);
-  vm->register_primitive("net_addrinfo_ai_socktype", prim_net_addrinfo_ai_socktype);
-  vm->register_primitive("net_addrinfo_ai_protocol", prim_net_addrinfo_ai_protocol);
 }
