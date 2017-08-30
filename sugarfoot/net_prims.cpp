@@ -64,8 +64,9 @@ static int prim_net_getaddrinfo(Process* proc) {
   oop output = proc->mmobj()->mm_list_new();
   struct addrinfo *result, *rp;
   if ((s = getaddrinfo(node, service, &hints, &result)) != 0) {
-    // TODO: Throw exception in case it fails
-    std::cout << "Oh No!!: " << gai_strerror(s) << "\n";
+    oop ex = proc->mm_exception("Exception", gai_strerror(s));
+    proc->stack_push(ex);
+    return PRIM_RAISED;
   } else {
     for (rp = result; rp != NULL; rp = rp->ai_next) {
       proc->mmobj()->mm_list_append(proc, output, create_addrinfo(proc, rp));
@@ -126,13 +127,13 @@ static oop create_sockaddr(Process* proc, struct sockaddr_storage* addr, socklen
 static int prim_net_accept(Process* proc) {
   int sockfd = untag_small_int(proc->get_arg(0));
 
-  struct sockaddr_storage addr = { 0 };
+  struct sockaddr_storage* addr = (struct sockaddr_storage*) malloc(sizeof(struct sockaddr_storage));
   socklen_t addrlen = sizeof(struct sockaddr_storage);
-  int result = accept(sockfd, (struct sockaddr *) &addr, &addrlen);
+  int result = accept(sockfd, (struct sockaddr *) addr, &addrlen);
 
   oop output = proc->mmobj()->mm_list_new();
   proc->mmobj()->mm_list_append(proc, output, tag_small_int(result));
-  proc->mmobj()->mm_list_append(proc, output, create_sockaddr(proc, &addr, addrlen));
+  proc->mmobj()->mm_list_append(proc, output, create_sockaddr(proc, addr, addrlen));
   proc->stack_push(output);
   return 0;
 }
@@ -145,14 +146,11 @@ static int prim_net_recv(Process* proc) {
   int flags = untag_small_int(proc->get_arg(2));
   char buf[len];
   ssize_t result = recv(sockfd, &buf, len, flags);
-
-  std::cout << "Result: " << result << "\n";
   if (result == -1) {
-    oop ex = proc->mm_exception("ReadError", "recv failed");
+    oop ex = proc->mm_exception("Exception", "recv() failed");
     proc->stack_push(ex);
     return PRIM_RAISED;
   }
-
   buf[result] = '\0';
   proc->stack_push(proc->mmobj()->mm_string_new(buf));
   return 0;
@@ -173,6 +171,45 @@ static int prim_net_send(Process* proc) {
   return 0;
 }
 
+static int prim_net_setsockopt(Process* proc) {
+  int sockfd = untag_small_int(proc->get_arg(0));
+  int level = untag_small_int(proc->get_arg(1));
+  int optname = untag_small_int(proc->get_arg(2));
+  int optval = untag_small_int(proc->get_arg(3));
+
+  // TODO: Only int flags are supported for now, which means that
+  // SO_LINGER can't really be used. Maybe instead of just assuming
+  // that `optval` is an integer, it could accept instancess of the
+  // class "LingerOptions".
+  int result = setsockopt(sockfd, level, optname, &optval, sizeof(optval));
+  proc->stack_push(tag_small_int(result));
+  return 0;
+}
+
+/* -- inet_ntop -- */
+
+static int prim_net_inet_ntop(Process* proc) {
+  oop addr_oop = proc->get_arg(0);
+  struct sockaddr_storage* addr =
+    (struct sockaddr_storage*) ((oop *) addr_oop)[2];
+
+  char buffer[INET6_ADDRSTRLEN] = { 0 };
+  switch (addr->ss_family) {
+  case AF_INET:
+    inet_ntop(addr->ss_family,
+              &((struct sockaddr_in *) addr)->sin_addr,
+              buffer, INET_ADDRSTRLEN);
+    break;
+  case AF_INET6:
+    inet_ntop(addr->ss_family,
+              &((struct sockaddr_in6 *) addr)->sin6_addr,
+              buffer, INET6_ADDRSTRLEN);
+    break;
+  }
+  proc->stack_push(proc->mmobj()->mm_string_new(buffer));
+  return 0;
+}
+
 /* -- close -- */
 
 static int prim_net_close(Process* proc) {
@@ -184,9 +221,11 @@ static int prim_net_close(Process* proc) {
 void net_init_primitives(VM *vm) {
   vm->register_primitive("net_getaddrinfo", prim_net_getaddrinfo);
   vm->register_primitive("net_socket", prim_net_socket);
+  vm->register_primitive("net_setsockopt", prim_net_setsockopt);
   vm->register_primitive("net_bind", prim_net_bind);
   vm->register_primitive("net_listen", prim_net_listen);
   vm->register_primitive("net_accept", prim_net_accept);
+  vm->register_primitive("net_inet_ntop", prim_net_inet_ntop);
   vm->register_primitive("net_recv", prim_net_recv);
   vm->register_primitive("net_send", prim_net_send);
   vm->register_primitive("net_close", prim_net_close);

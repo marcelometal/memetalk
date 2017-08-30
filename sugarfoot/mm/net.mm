@@ -2,9 +2,57 @@
   io : meme:io;
 .code
 
+// Socket types
+SOCK_STREAM: 1;         // stream (connection) socket
+SOCK_DGRAM: 2;          // datagram (conn.less) socket
+SOCK_RAW: 3;            // raw socket
+SOCK_RDM: 4;            // reliably-delivered message
+SOCK_SEQPACKET: 5;      // sequential packet socket
+
+// Supported address families
 AF_UNSPEC: 0;
-AF_INET: 2;
-AF_INET6: 10;
+AF_UNIX: 1;             // Unix domain sockets
+AF_INET: 2;             // Internet IP Protocol
+AF_AX25: 3;             // Amateur Radio AX.25
+AF_IPX: 4;              // Novell IPX
+AF_APPLETALK: 5;        // Appletalk DDP
+AF_NETROM: 6;           // Amateur radio NetROM
+AF_BRIDGE: 7;           // Multiprotocol bridge
+AF_AAL5: 8;             // Reserved for Werner's ATM
+AF_X25: 9;              // Reserved for X.25 project
+AF_INET6: 10;           // IP version 6
+AF_MAX: 12;             // For now..
+
+// For setsockopt (from asm-generic/socket.h)
+SOL_SOCKET: 1;
+
+SO_DEBUG: 1;
+SO_REUSEADDR: 2;
+SO_TYPE: 3;
+SO_ERROR: 4;
+SO_DONTROUTE: 5;
+SO_BROADCAST: 6;
+SO_SNDBUF: 7;
+SO_RCVBUF: 8;
+SO_SNDBUFFORCE: 32;
+SO_RCVBUFFORCE: 33;
+SO_KEEPALIVE: 9;
+SO_OOBINLINE: 10;
+SO_NO_CHECK: 11;
+SO_PRIORITY: 12;
+SO_LINGER: 13;
+SO_BSDCOMPAT: 14;
+SO_REUSEPORT: 15;
+SO_PASSCRED: 16;
+SO_PEERCRED: 17;
+SO_RCVLOWAT: 18;
+SO_SNDLOWAT: 19;
+SO_RCVTIMEO: 20;
+SO_SNDTIMEO: 21;
+
+inet_ntop: fun(addr) {
+  <primitive "net_inet_ntop">
+}
 
 getaddrinfo: fun(node, service, hints) {
   <primitive "net_getaddrinfo">
@@ -12,6 +60,10 @@ getaddrinfo: fun(node, service, hints) {
 
 socket: fun(domain, type, protocol) {
   <primitive "net_socket">
+}
+
+setsockopt: fun(sockfd, level, optname, optval) {
+  <primitive "net_setsockopt">
 }
 
 bind: fun(sockfd, addrinfo) {
@@ -22,7 +74,7 @@ listen: fun(sockfd, backlog) {
   <primitive "net_listen">
 }
 
-accept: fun(sockfd, addrinfo) {
+accept: fun(sockfd) {
   <primitive "net_accept">
 }
 
@@ -38,10 +90,6 @@ close: fun(sockfd) {
   <primitive "net_close">
 }
 
-class SockAddr
-  fields: self, len;
-end
-
 class AddrInfo
   fields: self, addrdict;
 
@@ -50,65 +98,68 @@ class AddrInfo
   }
 end
 
-loop: fun(client) {
-  var clientfd = client[0];
-  var clientaddr = client[1];
+class SockAddr
+  fields: self, len;
+end
 
-  if (clientfd > 0) {
-    io.print("Received info from client...");
-    var raw_received = recv(clientfd, 1024, 0);
-    var received = raw_received.trim();
+class Client
+  fields: fd, addr;
 
-    if (received == "exit" or raw_received == "") {
-      return false;
-    }
-    if (send(client[0], raw_received, 0) != raw_received.size()) {
+  init new: fun(acceptOutput) {
+    @fd = acceptOutput[0];
+    @addr = acceptOutput[1];
+  }
+
+  instance_method addr: fun() {
+    return inet_ntop(@addr);
+  }
+
+  instance_method send: fun(data) {
+    if (send(@fd, data, 0) != data.size()) {
       return false;
     }
     return true;
   }
-}
 
-main: fun() {
-  io.print("Echo Server");
-  getaddrinfo("0.0.0.0", "8000", { :ai_family: AF_INET }).each(fun(_, addr) {
-    var sockfd = socket(addr[:ai_family], addr[:ai_socktype], addr[:ai_protocol]);
-    if (sockfd != -1) {
-      io.print("bind");
-      if (bind(sockfd, addr) != 0) {
-        close(sockfd);
-        Exception.throw("bind");
-      }
+  instance_method recv: fun(size) {
+    return recv(@fd, size, 0);
+  }
 
-      io.print("listen");
-      if (listen(sockfd, 1) != 0) {
-        close(sockfd);
-        Exception.throw("listen");
-      }
+  instance_method close: fun() {
+    close(@fd);
+  }
+end
 
-      io.print("accept");
-      var client = accept(sockfd, addr);
-      if (client[0] < 1) {
-        Exception.throw("accept");
-      }
+class TCPServer
+  fields: sockfd, addrinfo;
 
-      while (true) {
-        if (!loop(client)) {
-          ^ 0;
+  instance_method bindAndListen: fun(host, port) {
+    @addrinfo = getaddrinfo(host, port, { :ai_family: AF_INET }).each(fun(_, addr) {
+      @sockfd = socket(addr[:ai_family], addr[:ai_socktype], addr[:ai_protocol]);
+      if (@sockfd != -1) {
+        if (setsockopt(@sockfd, SOL_SOCKET, SO_REUSEADDR, 1) == -1) {
+          Exception.throw("setsockopt() failed to set SO_REUSEADDR");
+        }
+        if (bind(@sockfd, addr) != 0) {
+          close(@sockfd);
+          Exception.throw("bind() failed");
+        }
+        if (listen(@sockfd, 1) != 0) {
+          close(@sockfd);
+          Exception.throw("listen() failed");
         }
       }
+      ^ addr;
+    });
+  }
 
-      io.print("close0: " + client[0].toString);
-      close(client[0]);
-      io.print("close1: " + sockfd.toString);
-      close(sockfd);
+  instance_method acceptClient: fun() {
+    return Client.new(accept(@sockfd));
+  }
 
-      ^ 0;
-    }
-  });
-  return 0;
-}
+  instance_method close: fun() {
+    close(@sockfd);
+  }
+end
 
 .endcode
-
-.end
