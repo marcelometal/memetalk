@@ -7,6 +7,14 @@
 #include "process.hpp"
 #include "vm.hpp"
 
+#define TYPE_CHECK(o, t, e)                                             \
+  if (!(proc->mmobj()->mm_object_vt(o) == proc->vm()->get_prime(t))) {  \
+    proc->raise("TypeError", e);                                        \
+  }
+
+#define TYPE_CHECK_ARG(n, t)                                            \
+  TYPE_CHECK(proc->get_arg(n), t, "Argument " #n " Expected " t)
+
 /* -- getaddrinfo -- */
 
 static int lookup_symbol_in_dict(Process* proc, const char* symbol, oop dict) {
@@ -46,6 +54,7 @@ static oop create_addrinfo(Process* proc, struct addrinfo* addrinfo) {
 static int prim_net_getaddrinfo(Process* proc) {
   oop node_oop = proc->get_arg(0);
   oop service_oop = proc->get_arg(1);
+  TYPE_CHECK_ARG(2, "Dictionary");
   oop hints_oop = proc->get_arg(2);
 
   const char* node = (node_oop == MM_NULL ? NULL :
@@ -80,8 +89,11 @@ static int prim_net_getaddrinfo(Process* proc) {
 /* -- socket -- */
 
 static int prim_net_socket(Process* proc) {
+  TYPE_CHECK_ARG(0, "Integer");
   int domain = untag_small_int(proc->get_arg(0));
+  TYPE_CHECK_ARG(1, "Integer");
   int type = untag_small_int(proc->get_arg(1));
+  TYPE_CHECK_ARG(2, "Integer");
   int protocol = untag_small_int(proc->get_arg(2));
   int sockfd = socket(domain, type, protocol);
   proc->stack_push(tag_small_int(sockfd));
@@ -91,7 +103,9 @@ static int prim_net_socket(Process* proc) {
 /* -- bind -- */
 
 static int prim_net_bind(Process* proc) {
+  TYPE_CHECK_ARG(0, "Integer");
   int sockfd = untag_small_int(proc->get_arg(0));
+  //TYPE_CHECK_ARG(1, "Object");
   oop addrinfo_oop = proc->get_arg(1);
   struct addrinfo* addrinfo = (struct addrinfo *) ((oop *) addrinfo_oop)[2];
   int result = bind(sockfd, addrinfo->ai_addr, addrinfo->ai_addrlen);
@@ -102,7 +116,9 @@ static int prim_net_bind(Process* proc) {
 /* -- listen -- */
 
 static int prim_net_listen(Process* proc) {
+  TYPE_CHECK_ARG(0, "Integer");
   int sockfd = untag_small_int(proc->get_arg(0));
+  TYPE_CHECK_ARG(1, "Integer");
   int backlog = untag_small_int(proc->get_arg(1));
   int result = listen(sockfd, backlog);
   proc->stack_push(tag_small_int(result));
@@ -125,6 +141,7 @@ static oop create_sockaddr(Process* proc, struct sockaddr_storage* addr, socklen
 }
 
 static int prim_net_accept(Process* proc) {
+  TYPE_CHECK_ARG(0, "Integer");
   int sockfd = untag_small_int(proc->get_arg(0));
 
   struct sockaddr_storage* addr = (struct sockaddr_storage*) malloc(sizeof(struct sockaddr_storage));
@@ -141,8 +158,11 @@ static int prim_net_accept(Process* proc) {
 /* -- recv -- */
 
 static int prim_net_recv(Process* proc) {
+  TYPE_CHECK_ARG(0, "Integer");
   int sockfd = untag_small_int(proc->get_arg(0));
+  TYPE_CHECK_ARG(1, "Integer");
   size_t len = untag_small_int(proc->get_arg(1));
+  TYPE_CHECK_ARG(2, "Integer");
   int flags = untag_small_int(proc->get_arg(2));
   char buf[len];
   ssize_t result = recv(sockfd, &buf, len, flags);
@@ -159,8 +179,11 @@ static int prim_net_recv(Process* proc) {
 /* -- send -- */
 
 static int prim_net_send(Process* proc) {
+  TYPE_CHECK_ARG(0, "Integer");
   int sockfd = untag_small_int(proc->get_arg(0));
+  TYPE_CHECK_ARG(1, "String");
   oop buf_oop = proc->get_arg(1);
+  TYPE_CHECK_ARG(2, "Integer");
   int flags = untag_small_int(proc->get_arg(2));
 
   size_t len = proc->mmobj()->mm_string_size(proc, buf_oop);
@@ -172,9 +195,13 @@ static int prim_net_send(Process* proc) {
 }
 
 static int prim_net_setsockopt(Process* proc) {
+  TYPE_CHECK_ARG(0, "Integer");
   int sockfd = untag_small_int(proc->get_arg(0));
+  TYPE_CHECK_ARG(1, "Integer");
   int level = untag_small_int(proc->get_arg(1));
+  TYPE_CHECK_ARG(2, "Integer");
   int optname = untag_small_int(proc->get_arg(2));
+  TYPE_CHECK_ARG(3, "Integer");
   int optval = untag_small_int(proc->get_arg(3));
 
   // TODO: Only int flags are supported for now, which means that
@@ -189,6 +216,7 @@ static int prim_net_setsockopt(Process* proc) {
 /* -- inet_ntop -- */
 
 static int prim_net_inet_ntop(Process* proc) {
+  //TYPE_CHECK_ARG(0, "Object");
   oop addr_oop = proc->get_arg(0);
   struct sockaddr_storage* addr =
     (struct sockaddr_storage*) ((oop *) addr_oop)[2];
@@ -213,6 +241,7 @@ static int prim_net_inet_ntop(Process* proc) {
 /* -- close -- */
 
 static int prim_net_close(Process* proc) {
+  TYPE_CHECK_ARG(0, "Integer");
   int fd = untag_small_int(proc->get_arg(0));
   proc->stack_push(tag_small_int(close(fd)));
   return 0;
