@@ -6,6 +6,7 @@
 main: fun() {
   var server = net.TCPServer.new();
   server.bindAndListen("::", "8000");
+  io.print("Server listening on port 8000");
 
   while (true) {
     var client = server.acceptClient();

@@ -109,22 +109,15 @@ class Client
     @fd = acceptOutput[0];
     @addr = acceptOutput[1];
   }
-
   instance_method addr: fun() {
     return inet_ntop(@addr);
   }
-
   instance_method send: fun(data) {
-    if (send(@fd, data, 0) != data.size()) {
-      return false;
-    }
-    return true;
+    return send(@fd, data, 0);
   }
-
   instance_method recv: fun(size) {
     return recv(@fd, size, 0);
   }
-
   instance_method close: fun() {
     close(@fd);
   }
@@ -133,8 +126,14 @@ end
 class TCPServer
   fields: sockfd, addrinfo;
 
+  instance_method acceptClient: fun() {
+    return Client.new(accept(@sockfd));
+  }
+  instance_method close: fun() {
+    close(@sockfd);
+  }
   instance_method bindAndListen: fun(host, port) {
-    @addrinfo = getaddrinfo(host, port, { :ai_family: AF_INET }).each(fun(_, addr) {
+    getaddrinfo(host, port, { :ai_family: AF_INET }).each(fun(_, addr) {
       @sockfd = socket(addr[:ai_family], addr[:ai_socktype], addr[:ai_protocol]);
       if (@sockfd != -1) {
         if (setsockopt(@sockfd, SOL_SOCKET, SO_REUSEADDR, 1) == -1) {
@@ -149,16 +148,9 @@ class TCPServer
           Exception.throw("listen() failed");
         }
       }
-      ^ addr;
+      @addrinfo = addr;
+      ^ null;
     });
-  }
-
-  instance_method acceptClient: fun() {
-    return Client.new(accept(@sockfd));
-  }
-
-  instance_method close: fun() {
-    close(@sockfd);
   }
 end
 
