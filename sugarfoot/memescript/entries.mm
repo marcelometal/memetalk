@@ -1196,18 +1196,19 @@ init new: fun(name) {
   @functions = {"toString": create_module_to_string(this)};
   @classes = {};
 }
+instance_method add_meta: fun(key, val) {
+  @meta_vars[key] = val;
+}
 instance_method set_params: fun(params) {
-  @params = params.map(fun(x) { x.toSymbol });
+  @params = params;
+  params.each(fun(p) { this.add_top_level_name(p) });
 }
 instance_method add_default_location: fun(name, path) {
-  @default_locations[name.toSymbol] = path;
+  @default_locations[name] = path;
 }
 instance_method add_import: fun(name, from) {
-  @imports[name.toSymbol] = from;
-}
-
-instance_method add_meta: fun(key, val) {
-  @meta_vars[key.toSymbol] = val;
+  @imports[name] = from;
+  this.add_top_level_name(name);
 }
 
 instance_method top_level_names: fun() {

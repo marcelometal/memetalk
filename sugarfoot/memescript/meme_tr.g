@@ -20,7 +20,7 @@ start = [:module
 
 meta_section :modobj = [:meta [meta_var(modobj)*]];
 
-meta_var :modobj = _:key _:val => modobj.add_meta(key, val);
+meta_var :modobj = [_:key _:val] => modobj.add_meta(key, val);
 
 requirements_section :modobj = [:requirements module_params:params !{modobj.set_params(params)}
                                 [:default-locations [default_location(modobj)*]]

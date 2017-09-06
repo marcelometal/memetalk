@@ -223,17 +223,15 @@ instance_method start: fun() {
   }]);
 }
 instance_method compiler_line: fun() {
-  var repo = null;
   var xs = null;
   return this._or([fun() {
-    repo = this._apply(:id);
     xs = this._many1(fun() {
       this._or([fun() {
         this._not(fun() {
           this._apply_with_args(:seq, ["\n"]);});
         this._apply(:anything);
       }]);});
-    return [repo, xs.join("")];
+    return xs.join("");
   }]);
 }
 instance_method meta_section: fun() {
@@ -269,61 +267,57 @@ instance_method requirements_section: fun() {
   return this._or([fun() {
     this._apply_with_args(:keyword,["requires"]);
     params = this._apply(:module_params);
-    this._apply_with_args(:keyword,["where"]);
-    specs = this._many(fun() {
-      this._apply(:module_spec);}, null);
+    specs = this._apply(:where_section);
     imp = this._many(fun() {
       this._apply(:module_import);}, null);
     return [:requirements, params, [:default-locations, specs], [:imports, imp]];
   }, fun() {
-    return [:requirements, [], null, null];
+    return [:requirements, [], [:default-locations, []], [:imports, []]];
+  }]);
+}
+instance_method where_section: fun() {
+  return this._or([fun() {
+    this._apply_with_args(:keyword,["where"]);
+    this._many(fun() {
+      this._apply(:module_default);}, null);
+  }, fun() {
+    return [];
   }]);
 }
 instance_method module_params: fun() {
   var x = null;
   var xs = null;
   return this._or([fun() {
-    x = this._apply(:module_param);
+    x = this._apply(:id);
     xs = this._many(fun() {
       this._or([fun() {
         this._apply_with_args(:token, [","]);
-        this._apply(:module_param);
+        this._apply(:id);
       }]);}, null);
     return [x] + xs;
   }]);
 }
-instance_method module_param: fun() {
-  var name = null;
-  return this._or([fun() {
-    name = this._apply(:id);
-    this._apply(:params);
-  }, fun() {
-    this._apply(:id);
-  }]);
-}
-instance_method module_spec: fun() {
+instance_method module_default: fun() {
   var name = null;
   var loc = null;
   return this._or([fun() {
     name = this._apply(:id);
     this._apply_with_args(:token, ["="]);
+    this._apply(:spaces);
     loc = this._apply(:module_location);
     return [name, loc];
   }]);
 }
 instance_method module_location: fun() {
-  var repo = null;
   var xs = null;
   return this._or([fun() {
-    repo = this._apply(:id);
-    this._apply_with_args(:token, ["://"]);
     xs = this._many1(fun() {
       this._or([fun() {
         this._not(fun() {
           this._apply_with_args(:seq, ["\n"]);});
         this._apply(:anything);
       }]);});
-    return [repo, xs.join("")];
+    return xs.join("")];
   }]);
 }
 instance_method module_import: fun() {
