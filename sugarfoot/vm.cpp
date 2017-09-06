@@ -189,7 +189,9 @@ oop VM::instantiate_module(Process* proc, const char* mod_path, oop module_args_
   modules_map_t::iterator it = _modules.find(mod_path);
   if (it == _modules.end()) {
     DBG("loading new module " << mod_path << endl);
-    mmc = new (GC) MMCImage(proc, _core_image, mod_path);
+    int file_size;
+    char* data = fetch_module(mod_path, &file_size);
+    mmc = new (GC) MMCImage(proc, _core_image, mod_path, file_size, data);
     _modules[mod_path] = mmc;
     mmc->load();
   } else {

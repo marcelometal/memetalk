@@ -16,8 +16,9 @@ using namespace std;
 word MMCImage::HEADER_SIZE = 5 * WSIZE;
 word MMCImage::MAGIC_NUMBER = 0x420;
 
-MMCImage::MMCImage(Process* proc, CoreImage* core_image, const std::string& mod_path)
-  : _log(LOG_MMCIMG), _proc(proc), _mmobj(proc->vm()->mmobj()), _core_image(core_image), _mod_path(mod_path) {
+MMCImage::MMCImage(Process* proc, CoreImage* core_image, const std::string& mod_path, int data_size, char* data)
+  : _log(LOG_MMCIMG), _proc(proc), _mmobj(proc->vm()->mmobj()), _core_image(core_image),
+    _mod_path(mod_path), _data_size(data_size), _data(data) {
 }
 
 void MMCImage::load_header() {
@@ -326,7 +327,7 @@ oop MMCImage::instantiate_module(oop module_arguments_list) {
 
 
 oop MMCImage::load() {
-  _data = _proc->vm()->fetch_module(_mod_path, &_data_size);
+//  _data = _proc->vm()->fetch_module(_mod_path, &_data_size);
   load_header();
   relocate_addresses(_data, _data_size, HEADER_SIZE + _names_size + _ot_size + _er_size + _st_size);
   link_external_references();
