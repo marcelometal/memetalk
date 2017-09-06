@@ -1,7 +1,8 @@
-.preamble(ometa_base)
-  ometa_base: meme:ometa_base;
-  [OMetaBase] <= ometa_base;
-.code
+meme foo
+requires ometa_base
+where
+ ometa_base = central:memescript/ometa_base
+import OMetaBase from ometa_base
 
 class MemeScriptTranslator < OMetaBase
 fields: proc;
@@ -11,64 +12,48 @@ init new: fun(proc, input) {
 }
 
 instance_method start: fun() {
-  var license = null;
-  var meta = null;
   var modobj = null;
   return this._or([fun() {
     this._form(fun() {
       this._apply_with_args(:exactly, [:module]);
-      license = this._apply(:anything);
-      meta = this._apply(:anything);
+      this._apply(:anything);
       modobj = @proc.new_module();
-      this._apply_with_args(:preamble, [modobj]);
-      this._apply_with_args(:code_sec, [modobj]);});
+      this._apply_with_args(:meta_section, [modobj]);
+      this._apply_with_args(:requirements_section, [modobj]);
+      this._apply_with_args(:code_section, [modobj]);});
   }]);
 }
-instance_method preamble: fun() {
+instance_method meta_section: fun() {
+  var mvars = null;
+  var modobj = this._apply(:anything);
+  return this._or([fun() {
+    this._form(fun() {
+      this._apply_with_args(:exactly, [:meta]);
+      this._form(fun() {
+        mvars = this._many(fun() {
+          this._apply(:anything);}, null);});});
+    return modobj.set_meta(mvars);
+  }]);
+}
+instance_method requirements_section: fun() {
   var params = null;
+  var locs = null;
+  var imp = null;
   var modobj = this._apply(:anything);
   return this._or([fun() {
     this._form(fun() {
-      this._apply_with_args(:exactly, [:preamble]);
+      this._apply_with_args(:exactly, [:requirements]);
       params = this._apply(:anything);
-      modobj.set_params(params);
       this._form(fun() {
-        this._many(fun() {
-          this._apply_with_args(:module_default_param, [modobj]);}, null);});
+        this._apply_with_args(:exactly, [:default-locations]);
+        locs = this._apply(:anything);});
       this._form(fun() {
-        this._many(fun() {
-          this._apply_with_args(:module_alias, [modobj]);}, null);});});
+        this._apply_with_args(:exactly, [:imports]);
+        imp = this._apply(:anything);});});
+    return modobj.set_requirements(params, locs, imp);
   }]);
 }
-instance_method module_default_param: fun() {
-  var lhs = null;
-  var ns = null;
-  var name = null;
-  var modobj = this._apply(:anything);
-  return this._or([fun() {
-    this._form(fun() {
-      this._apply_with_args(:exactly, [:param]);
-      lhs = this._apply(:anything);
-      this._form(fun() {
-        this._apply_with_args(:exactly, [:library]);
-        ns = this._apply(:anything);
-        name = this._apply(:anything);});});
-    return modobj.add_default_param(lhs, ns, name);
-  }]);
-}
-instance_method module_alias: fun() {
-  var libname = null;
-  var alias = null;
-  var modobj = this._apply(:anything);
-  return this._or([fun() {
-    this._form(fun() {
-      this._apply_with_args(:exactly, [:alias]);
-      libname = this._apply(:anything);
-      alias = this._apply(:anything);});
-    return modobj.module_alias(libname, alias);
-  }]);
-}
-instance_method code_sec: fun() {
+instance_method code_secion: fun() {
   var modobj = this._apply(:anything);
   return this._or([fun() {
     this._form(fun() {
@@ -845,4 +830,3 @@ instance_method arglist: fun() {
 
 end //MemeScriptTranslator
 
-.endcode
