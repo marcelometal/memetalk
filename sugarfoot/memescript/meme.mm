@@ -219,6 +219,8 @@ instance_method start: fun() {
     meta = this._apply(:meta_section);
     req = this._apply(:requirements_section);
     code = this._apply(:code_section);
+    this._apply(:spaces);
+    this._apply(:end);
     return [:module, c, meta, req, code];
   }]);
 }
@@ -317,7 +319,7 @@ instance_method module_location: fun() {
           this._apply_with_args(:seq, ["\n"]);});
         this._apply(:anything);
       }]);});
-    return xs.join("")];
+    return xs.join("");
   }]);
 }
 instance_method module_import: fun() {

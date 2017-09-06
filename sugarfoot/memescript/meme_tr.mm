@@ -95,7 +95,7 @@ instance_method module_import: fun() {
     return modobj.add_import(name, from);
   }]);
 }
-instance_method code_secion: fun() {
+instance_method code_section: fun() {
   var modobj = this._apply(:anything);
   return this._or([fun() {
     this._form(fun() {

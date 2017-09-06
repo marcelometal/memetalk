@@ -32,7 +32,7 @@ default_location :modobj = [_:mod _:path] => modobj.add_default_location(mod, pa
 
 module_import :modobj = [_:name _:from] => modobj.add_import(name, from);
 
-code_secion :modobj = [:code ~~[load_top_level_name(modobj)*] [definition(modobj)*]];
+code_section :modobj = [:code ~~[load_top_level_name(modobj)*] [definition(modobj)*]];
 
 load_top_level_name :modobj = [:class [_:name _] _*] => modobj.add_top_level_name(name)
                             | [:object _:name _*] => modobj.add_top_level_name(name)

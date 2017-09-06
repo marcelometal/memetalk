@@ -21,6 +21,7 @@ start = 'm' 'e' 'm' 'e' space compiler_line:c
         meta_section:meta
         requirements_section:req
         code_section:code
+        spaces end
         -> ["module", c, meta, req, code]
 
 compiler_line = (~'\n' anything)+:xs -> "".join(xs)

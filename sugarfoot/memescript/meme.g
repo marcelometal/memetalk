@@ -104,6 +104,7 @@ start = 'm' 'e' 'm' 'e' space compiler_line:c
         meta_section:meta
         requirements_section:req
         code_section:code
+        spaces $
         => [:module, c, meta, req, code];
 
 compiler_line = {~'\n' _}+:xs => xs.join("");
@@ -126,7 +127,7 @@ module_params = id:x {"," id}*:xs => [x] + xs;
 
 module_default = id:name "=" spaces module_location:loc => [name, loc];
 
-module_location = {~'\n' _}+:xs => xs.join("")];
+module_location = {~'\n' _}+:xs => xs.join("");
 
 module_import = ``import`` id:name ``from`` id:lib => [name, lib];
 

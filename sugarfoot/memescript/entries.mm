@@ -1201,7 +1201,7 @@ instance_method add_meta: fun(key, val) {
 }
 instance_method set_params: fun(params) {
   @params = params;
-  params.each(fun(p) { this.add_top_level_name(p) });
+  params.each(fun(_, p) { this.add_top_level_name(p) });
 }
 instance_method add_default_location: fun(name, path) {
   @default_locations[name] = path;

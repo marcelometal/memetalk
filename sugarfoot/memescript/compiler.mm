@@ -128,7 +128,7 @@ class Compiler
 fields: cmodule, filepath;
 instance_method new_module: fun() {
   var module_name = basename(@filepath); //provisory function to get the basename
-  @cmodule = entries.CompiledModule.new(module_name, null);
+  @cmodule = entries.CompiledModule.new(module_name);
   return @cmodule;
 }
 instance_method parse: fun() {
